@@ -1,5 +1,5 @@
 load("@cmake_configure_file//:cmake_configure_file.bzl", "cmake_configure_file")
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_shared_library")
 
 # Options that depend on just the OS
 
@@ -147,10 +147,16 @@ cc_library(
 # Tests
 
 cc_library(
-    name = "foo",
+    name = "foo_lib",
     srcs = ["test/libfoo.c"],
     hdrs = ["test/libfoo.h"],
     copts = MIMICK_COPTS,
+    visibility = ["//visibility:private"],
+)
+
+cc_shared_library(
+    name = "foo",
+    deps = [":foo_lib"],
     visibility = ["//visibility:private"],
 )
 
@@ -158,9 +164,10 @@ cc_test(
     name = "test_c",
     srcs = [ "test/test.c"],
     deps = [
-        ":foo",
+        ":foo_lib",
         ":mimick"
     ],
+    dynamic_deps = [":foo"],
     copts = MIMICK_COPTS,
     visibility = ["//visibility:private"],
 )
@@ -169,9 +176,10 @@ cc_test(
     name = "test_cpp",
     srcs = ["test/test.cpp"],
     deps = [
-        ":foo",
+        ":foo_lib",
         ":mimick"
     ],
+    dynamic_deps = [":foo"],
     cxxopts = MIMIC_CXXOPTS,
     visibility = ["//visibility:private"],
 )
