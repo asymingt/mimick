@@ -1,5 +1,5 @@
 load("@cmake_configure_file//:cmake_configure_file.bzl", "cmake_configure_file")
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test", "cc_shared_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_shared_library", "cc_test")
 
 # Options that depend on just the OS
 
@@ -18,28 +18,29 @@ config_setting(
         "@platforms//cpu:x86_64",
     ],
 )
+
 MIMICK_DEFINES_CPU = select({
-    ":windows_x86_64" : [
+    ":windows_x86_64": [
         "MMK_ARCH_x86=1",
         "MMK_ARCH=x86_64",
         "MMK_BITS=64",
     ],
-    "@platforms//cpu:x86_64" : [
+    "@platforms//cpu:x86_64": [
         "MMK_ARCH_x86_64=1",
         "MMK_ARCH=x86_64",
         "MMK_BITS=64",
     ],
-    "@platforms//cpu:x86_32" : [
+    "@platforms//cpu:x86_32": [
         "MMK_ARCH_x86=1",
         "MMK_ARCH=i386",
         "MMK_BITS=32",
     ],
-    "@platforms//cpu:aarch64" : [
+    "@platforms//cpu:aarch64": [
         "MMK_ARCH_ARM64=1",
         "MMK_ARCH=aarch64",
         "MMK_BITS=64",
     ],
-    "@platforms//cpu:aarch32" : [
+    "@platforms//cpu:aarch32": [
         "MMK_ARCH_ARM=1",
         "MMK_ARCH=arm",
         "MMK_BITS=32",
@@ -47,23 +48,23 @@ MIMICK_DEFINES_CPU = select({
 })
 
 MIMICK_DEFINES_OS = select({
-    "windows_x86_32" : [
+    "windows_x86_32": [
         "MMK_EXE_FMT_PE=1",
         "MMK_MANGLING=leading-underscore",
         "HAVE___STDIO_COMMON_VFPRINTF=1",
     ],
-    "@platforms//os:windows" :[
+    "@platforms//os:windows": [
         "MMK_EXE_FMT_PE=1",
         "HAVE___STDIO_COMMON_VFPRINTF=1",
     ],
-    "@platforms//os:macos" : [
+    "@platforms//os:macos": [
         "MMK_EXE_FMT_MACH_O=1",
         "HAVE_MMAP=1",
         "HAVE_MMAP_MAP_ANONYMOUS=1",
         "HAVE_MMAP_MAP_ANON=1",
         "MMK_MANGLING=leading-underscore",
     ],
-    "@platforms//os:freebsd" : [
+    "@platforms//os:freebsd": [
         "MMK_EXE_FMT_ELF=1",
         "HAVE_ELF_AUXINFO=1",
         "HAVE__R_DEBUG=1",
@@ -73,7 +74,7 @@ MIMICK_DEFINES_OS = select({
         "HAVE_MMAP_MAP_ANON=1",
         "MMK_MANGLING=none",
     ],
-    "@platforms//os:linux" : [
+    "@platforms//os:linux": [
         "MMK_EXE_FMT_ELF=1",
         "HAVE_ELF_AUXV_T=1",
         "HAVE__R_DEBUG=1",
@@ -86,11 +87,11 @@ MIMICK_DEFINES_OS = select({
 })
 
 PLATFORM_SPECIFIC_PLT_SRCS = select({
-    "@platforms//os:windows" : [
+    "@platforms//os:windows": [
         "src/plt-pe.h",
         "src/plt-pe.c",
     ],
-    "@platforms//os:macos" : [
+    "@platforms//os:macos": [
         "src/plt-mach-o.h",
         "src/plt-mach-o.c",
     ],
@@ -101,25 +102,13 @@ PLATFORM_SPECIFIC_PLT_SRCS = select({
 })
 
 PLATFORM_SPECIFIC_TRAMPOLINE_SRCS = select({
-    ":windows_x86_64" : ["src/asm/trampoline-x86_64-win.S"],
-    "@platforms//cpu:x86_64" : ["src/asm/trampoline-x86_64-systemv.S"],
-    "@platforms//cpu:x86_32" : ["src/asm/trampoline-i386-cdecl.S"],
-    "@platforms//cpu:aarch32" : ["src/asm/trampoline-arm.S"],
-    "@platforms//cpu:aarch64" : ["src/asm/trampoline-aarch64.S"],
+    ":windows_x86_64": ["src/asm/trampoline-x86_64-win.S"],
+    "@platforms//cpu:x86_64": ["src/asm/trampoline-x86_64-systemv.S"],
+    "@platforms//cpu:x86_32": ["src/asm/trampoline-i386-cdecl.S"],
+    "@platforms//cpu:aarch32": ["src/asm/trampoline-arm.S"],
+    "@platforms//cpu:aarch64": ["src/asm/trampoline-aarch64.S"],
     "//conditions:default": [],
 })
-
-# Preprocessor directives and compiler options
-
-MIMICK_COPTS = ["-std=c99", "-Wall", "-Wextra", "-Wno-unused-parameter"] + select({
-    "@platforms//os:windows" :[
-        "-D_CRT_SECURE_NO_WARNINGS",
-        "-DWIN32_LEAN_AND_MEAN"
-    ],
-    "//conditions:default": [],
-})
-
-MIMIC_CXXOPTS = ["-std=c++11"]
 
 # Auto-generate config.h
 
@@ -135,12 +124,27 @@ cmake_configure_file(
 
 cc_library(
     name = "mimick",
-    srcs = glob(["src/**/*.h", "src/**/*.c"], exclude=["src/plt-*"]) + [":config_h"] +
-        PLATFORM_SPECIFIC_TRAMPOLINE_SRCS +
-        PLATFORM_SPECIFIC_PLT_SRCS,
+    srcs = glob(
+               [
+                   "src/**/*.h",
+                   "src/**/*.c",
+               ],
+               exclude = ["src/plt-*"],
+           ) + [":config_h"] +
+           PLATFORM_SPECIFIC_TRAMPOLINE_SRCS +
+           PLATFORM_SPECIFIC_PLT_SRCS,
     hdrs = glob(["include/**/*.h"]),
-    copts = MIMICK_COPTS,
-    includes = ["include", "src"],
+    includes = [
+        "include",
+        "src",
+    ],
+    local_defines = ["_GNU_SOURCE"] + select({
+        "@platforms//os:windows": [
+            "-D_CRT_SECURE_NO_WARNINGS",
+            "-DWIN32_LEAN_AND_MEAN",
+        ],
+        "//conditions:default": [],
+    }),
     visibility = ["//visibility:public"],
 )
 
@@ -150,36 +154,33 @@ cc_library(
     name = "foo_lib",
     srcs = ["test/libfoo.c"],
     hdrs = ["test/libfoo.h"],
-    copts = MIMICK_COPTS,
     visibility = ["//visibility:private"],
 )
 
 cc_shared_library(
     name = "foo",
-    deps = [":foo_lib"],
     visibility = ["//visibility:private"],
+    deps = [":foo_lib"],
 )
 
 cc_test(
     name = "test_c",
-    srcs = [ "test/test.c"],
+    srcs = ["test/test.c"],
+    dynamic_deps = [":foo"],
+    visibility = ["//visibility:private"],
     deps = [
         ":foo_lib",
-        ":mimick"
+        ":mimick",
     ],
-    dynamic_deps = [":foo"],
-    copts = MIMICK_COPTS,
-    visibility = ["//visibility:private"],
 )
 
 cc_test(
     name = "test_cpp",
     srcs = ["test/test.cpp"],
+    dynamic_deps = [":foo"],
+    visibility = ["//visibility:private"],
     deps = [
         ":foo_lib",
-        ":mimick"
+        ":mimick",
     ],
-    dynamic_deps = [":foo"],
-    cxxopts = MIMIC_CXXOPTS,
-    visibility = ["//visibility:private"],
 )
