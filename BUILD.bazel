@@ -110,6 +110,14 @@ PLATFORM_SPECIFIC_TRAMPOLINE_SRCS = select({
     "//conditions:default": [],
 })
 
+PLATFORM_AGNOSTIC_SRCS = glob(
+    [
+        "src/**/*.h",
+        "src/**/*.c",
+    ],
+    exclude = ["src/plt-*"],
+)
+
 # Auto-generate config.h
 
 cmake_configure_file(
@@ -122,34 +130,40 @@ cmake_configure_file(
 
 # Library
 
+# TODO(asymingt) work out why -ldl doesn't work for linkopts.
+# The -lrt linkopt is required for this to work on Linux with the glibc version
+# within toolchains_llvm_bootstrapped. In theory, it should be -ldl and, frankly,
+# I don't know why that doesn't work.
 cc_library(
     name = "mimick",
-    srcs = glob(
-               [
-                   "src/**/*.h",
-                   "src/**/*.c",
-               ],
-               exclude = ["src/plt-*"],
-           ) + [":config_h"] +
+    srcs = [":config_h"] +
+           PLATFORM_AGNOSTIC_SRCS +
            PLATFORM_SPECIFIC_TRAMPOLINE_SRCS +
            PLATFORM_SPECIFIC_PLT_SRCS,
     hdrs = glob(["include/**/*.h"]),
-    copts = ["-D_GNU_SOURCE"] + select({
-        "@platforms//os:windows": [
-            "-D_CRT_SECURE_NO_WARNINGS",
-            "-DWIN32_LEAN_AND_MEAN",
-        ],
-        "//conditions:default": [],
-    }),
     includes = [
         "include",
         "src",
     ],
+    linkopts = select({
+        "@platforms//os:linux": ["-lrt"],
+        "//conditions:default": [],
+    }),
+    local_defines = select({
+        "@platforms//os:windows": [
+            "_CRT_SECURE_NO_WARNINGS",
+            "WIN32_LEAN_AND_MEAN",
+        ],
+        "//conditions:default": [
+            "_GNU_SOURCE",
+        ],
+    }),
     visibility = ["//visibility:public"],
 )
 
 cc_shared_library(
     name = "mimick_dynamic",
+    exports_filter = [":mimick"],
     visibility = ["//visibility:public"],
     deps = [":mimick"],
 )
