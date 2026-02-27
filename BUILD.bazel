@@ -164,6 +164,7 @@ cc_library(
 cc_shared_library(
     name = "mimick_dynamic",
     exports_filter = [":mimick"],
+    features = ["windows_export_all_symbols"],
     visibility = ["//visibility:public"],
     deps = [":mimick"],
 )
@@ -179,6 +180,8 @@ cc_library(
 
 cc_shared_library(
     name = "foo_dynamic",
+    exports_filter = [":foo"],
+    features = ["windows_export_all_symbols"],
     visibility = ["//visibility:private"],
     deps = [":foo"],
 )
@@ -188,6 +191,7 @@ cc_test(
     srcs = ["test/test.c"],
     dynamic_deps = [
         ":foo_dynamic",
+        ":mimick_dynamic",
     ],
     visibility = ["//visibility:private"],
     deps = [
@@ -201,6 +205,7 @@ cc_test(
     srcs = ["test/test.cpp"],
     dynamic_deps = [
         ":foo_dynamic",
+        ":mimick_dynamic",
     ],
     visibility = ["//visibility:private"],
     deps = [
