@@ -134,42 +134,52 @@ cc_library(
            PLATFORM_SPECIFIC_TRAMPOLINE_SRCS +
            PLATFORM_SPECIFIC_PLT_SRCS,
     hdrs = glob(["include/**/*.h"]),
-    includes = [
-        "include",
-        "src",
-    ],
-    local_defines = ["_GNU_SOURCE"] + select({
+    copts = ["-D_GNU_SOURCE"] + select({
         "@platforms//os:windows": [
             "-D_CRT_SECURE_NO_WARNINGS",
             "-DWIN32_LEAN_AND_MEAN",
         ],
         "//conditions:default": [],
     }),
+    includes = [
+        "include",
+        "src",
+    ],
+    linkopts = ["-lrt"],
     visibility = ["//visibility:public"],
+)
+
+cc_shared_library(
+    name = "mimick_dynamic",
+    visibility = ["//visibility:public"],
+    deps = [":mimick"],
 )
 
 # Tests
 
 cc_library(
-    name = "foo_lib",
+    name = "foo",
     srcs = ["test/libfoo.c"],
     hdrs = ["test/libfoo.h"],
     visibility = ["//visibility:private"],
 )
 
 cc_shared_library(
-    name = "foo",
+    name = "foo_dynamic",
     visibility = ["//visibility:private"],
-    deps = [":foo_lib"],
+    deps = [":foo"],
 )
 
 cc_test(
     name = "test_c",
     srcs = ["test/test.c"],
-    dynamic_deps = [":foo"],
+    dynamic_deps = [
+        ":foo_dynamic",
+        ":mimick_dynamic",
+    ],
     visibility = ["//visibility:private"],
     deps = [
-        ":foo_lib",
+        ":foo",
         ":mimick",
     ],
 )
@@ -177,10 +187,13 @@ cc_test(
 cc_test(
     name = "test_cpp",
     srcs = ["test/test.cpp"],
-    dynamic_deps = [":foo"],
+    dynamic_deps = [
+        ":foo_dynamic",
+        ":mimick_dynamic",
+    ],
     visibility = ["//visibility:private"],
     deps = [
-        ":foo_lib",
+        ":foo",
         ":mimick",
     ],
 )
