@@ -145,7 +145,6 @@ cc_library(
         "include",
         "src",
     ],
-    linkopts = ["-lrt"],
     visibility = ["//visibility:public"],
 )
 
